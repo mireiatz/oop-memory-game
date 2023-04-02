@@ -11,22 +11,16 @@ public class Board {
     private ArrayList<List<String>> displayBoard; //face down board configuration to keep track of matched guesses
     public int attempts;
 
-    private ArrayList<List<String>> allGuesses;
-    List<String> userInput = new ArrayList<String>();
+    private ArrayList<String> allGuesses;
     
 
-    public Board(int width, int height, boolean isReplay) throws IOException {
+    public Board(int height, int width, boolean isReplay) throws IOException {
         this.width = width;
         this.height = height;
         this.isReplay = isReplay;
         this.board = createBoard("up");
         this.displayBoard = createBoard("down");
-        if(!isReplay)
-        {
-           // Utils.removeFile("latestAttempt.txt", "Tracking");
-            //Utils.createFile("latestAttempt.txt", "Tracking");
-            //Utils.createFile("leaderboard.txt", "Results");
-        }
+        this.allGuesses = new ArrayList<String>();
     }
 
 
@@ -34,16 +28,19 @@ public class Board {
     public ArrayList<List<String>> createBoard(String type)
     {
         ArrayList<List<String>> board = new ArrayList<List<String>>(height);
+        List<String> selectedSymbolPairs = new ArrayList<String>();
 
         if(isReplay)
         {
-            board = Utils.getReplayBoard();
+            String[] replayBoard = Utils.getReplayInfo(1).replaceAll("[\\[]", "").replaceAll("[]]", "").replaceAll(" ", "").split(",");
+            for(String symbol : replayBoard){
+                selectedSymbolPairs.add(symbol);
+            }
         }
         else
         {
             //list of available symbols and list of symbols that will be selected based on board size
             List<String> allSymbols = Arrays.asList("!", "*", "$", "+", "-", "·", "%", "&", "/", "(", ")", "=", "¡", "?", "¿", "<", ">", "^", "{", "[", "]", "}", "¨", ";", ":", ".", "@", "_", "#", "€");
-            List<String> selectedSymbolPairs = new ArrayList<String>();
 
             //add random symbol pairs to list
             while(selectedSymbolPairs.size() < (height*width)){
@@ -55,7 +52,7 @@ public class Board {
             }
             //shuffle pairs
             Collections.shuffle(selectedSymbolPairs);
-
+        }
             //counter to get symbols from shuffled list
             int cont = 0;
 
@@ -76,7 +73,7 @@ public class Board {
                 }
                 board.add(rows);
             }
-        }
+
         return board;
     }
 
@@ -98,55 +95,41 @@ public class Board {
     // game playing loop
     public void play() throws Exception
     {
-        boolean cm = false;
-        List<String> p = new ArrayList<>();
-        int rc = 0;
-        if(isReplay) {
-            p = Utils.getPlayerGuesses();
-        }
+        int guessLine = 2;
         printBoard(board);
 
-        while(!cm)
-        {
-            //continue as long as game has not been won
-            if(!win()) {
-                String g = "";
-                if(isReplay)
-                {
-                    g = p.get(rc);
-                    rc++;
-                }
+        //continue as long as game has not been won
+        while(!win()) {
+            //print board configuration so far
+            System.out.println("Board configuration:");
+            printBoard(displayBoard);
+            String guesses = "";
 
-                //print board configuration so far
-                System.out.println("Board configuration:");
-                printBoard(displayBoard);
-
-                //get guesses and parse
-                String guesses = Utils.getPlayerInput("Enter pair to reveal (row,column) (row,column) (e.g. (1,2) (2,2)):", "Guess");
-                int[] locations = Utils.parseGuesses(guesses);
-
-                //if the guessed locations are within the board size check if corresponding cards match
-                if(checkBounds(locations)){
-                    checkAnswer(locations);
-                }
+            //get guesses and parse them
+            if(isReplay)
+            {
+                guesses = Utils.getReplayInfo(guessLine);
+                System.out.println("Guessed pair:");
+                System.out.println(guesses);
+                guessLine++;
             }else{
-                //if the game has ended print the final board configuration
-                System.out.println("Board configuration:");
-                printBoard(displayBoard);
-                System.out.println("YOU WIN");
+                guesses = Utils.getPlayerInput("Enter pair to reveal (row,column) (row,column) (e.g. (1,2) (2,2)):", "Guess");
+            }
+            int[] locations = Utils.parseGuesses(guesses);
 
-                //update and print the 5 high scores board
-                updateLeaderboard();
-                printLeaderboard();
+            //save guesses for replay file
+            allGuesses.add(guesses);
 
-                //end game
-                System.exit(0);
+            //if the guessed locations are within the board size check if corresponding cards match
+            if(checkBounds(locations)){
+                checkAnswer(locations);
             }
         }
+        endGame();
     }
 
 
-    // Checks if the input exceeds the boundies of a given board
+    //check if the input exceeds the boundaries of a given board
     public boolean checkBounds(int[] locations)
     {
         if(locations[1] > width || locations[0] > height || locations[3] > width || locations[2] > height)
@@ -182,7 +165,7 @@ public class Board {
         }
 
         //if symbols match update the face down board
-        if(symbol1 == symbol2){
+        if(symbol1.equals(symbol2)){
             ArrayList<List<String>> newBoard = new ArrayList<List<String>>(height);
             for (int i = 0; i < height; i++){
                 List<String> row = new ArrayList<String>();
@@ -196,11 +179,15 @@ public class Board {
                 newBoard.add(row);
             }
             displayBoard = newBoard;
-            Utils.clearConsole();
+            if(!isReplay){
+                Utils.clearConsole();
+            }
             System.out.print("MATCH\n");
         }else{
             //if symbols do not match continue the game
-            Utils.clearConsole();
+            if(!isReplay){
+                Utils.clearConsole();
+            }
             System.out.print("FAIL\n");
         }
     }
@@ -218,10 +205,23 @@ public class Board {
     }
 
 
+    //save game into replay file
+    public void updateLastGame() throws IOException {
+        String info = height + "x" + width + "\n";
+        info += displayBoard + "\n";
+
+        for(String guesses : allGuesses){
+            info += guesses + "\n";
+        }
+
+        Utils.writeToFile("lastgame.txt", info);
+    }
+
+
     //update the leaderboard file with this play's results
-    public void updateLeaderboard() throws IOException {
+    public void updateLeaderboard()  throws IOException {
         //read leaderboard file
-        List<String> leaderboard = Utils.readFile("leaderboard.txt", "results");
+        List<String> leaderboard = Utils.readFile("leaderboard.txt");
         String newLeaderboard = "";
         boolean added = false;
 
@@ -249,14 +249,13 @@ public class Board {
         }
 
         //overwrite new leaderboard on file
-        Utils.writeToFile("leaderboard.txt", "results", newLeaderboard, "overwrite");
+        Utils.writeToFile("leaderboard.txt", newLeaderboard);
     }
 
 
     //print lines in leaderboard file
-    public void printLeaderboard(){
-        List<String> leaderboard = Utils.readFile("leaderboard.txt", "results");
-        String newLeaderboard = "";
+    public void printLeaderboard() {
+        List<String> leaderboard = Utils.readFile("leaderboard.txt");
         int cont = 1;
 
         //print only first 5 lines
@@ -270,5 +269,23 @@ public class Board {
                 }
             }
         }
+    }
+
+    public void endGame()  throws IOException {
+        //print the final board configuration
+        System.out.println("Board configuration:");
+        printBoard(displayBoard);
+        System.out.println("YOU WIN");
+        if(!isReplay){
+            //update and print the 5 high scores board
+            updateLeaderboard();
+            printLeaderboard();
+
+            //update the last game file
+            updateLastGame();
+        }
+
+        //end game
+        System.exit(0);
     }
 }

@@ -1,6 +1,7 @@
 package game;
 
 
+import java.util.List;
 
 public class Main {
     static Board board;
@@ -19,10 +20,10 @@ public class Main {
     // Check to determine if the player wants to replay the most recent attempt
     public static boolean isReplay()
     {
-        String input = Utils.getPlayerInput("Do you wish to replay the last attempt. Valid entries Yes or No",
+        String input = Utils.getPlayerInput("Replay last game? Y/N",
              "Replay");
 
-        if(input.matches("Yes|yes|y")){
+        if(input.matches("Yes|yes|Y|y")){
             return true;
         }else{
             return false;
@@ -30,16 +31,17 @@ public class Main {
     }
 
 
-    // Get the dimensions of the board from user input
+    // get the dimensions of the board from user input
     public static int[] getBoardDimensions(boolean isReplay) throws Exception
     {
-      //  if(isReplay){
-          //  width = Integer.valueOf(Utils.extractDims("width"));
-          //  height = Integer.valueOf(Utils.extractDims("height"));
-     //   }else{
+        int[] dimensions;
+        if(isReplay){
+            String dimensionsString = Utils.getReplayInfo(0);
+            dimensions = Utils.parseDimensions(dimensionsString);
+        }else{
             String input = Utils.getPlayerInput("Enter board dimensions for even number of tiles. Sample entry: 4x4", "Dimensions");
-            int[] dimensions = Utils.parseDimensions(input);
-            return dimensions;
-   //     }
+            dimensions = Utils.parseDimensions(input);
+        }
+        return dimensions;
     }
 }
