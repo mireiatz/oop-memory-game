@@ -14,28 +14,26 @@ public class Board {
     private ArrayList<String> allGuesses;
     
 
-    public Board(int height, int width, boolean isReplay) throws IOException {
+    public Board(int height, int width, boolean isReplay) {
         this.width = width;
         this.height = height;
         this.isReplay = isReplay;
-        this.board = createBoard("up");
+        board = createBoard("up");
         this.displayBoard = createBoard("down");
-        this.allGuesses = new ArrayList<String>();
+        this.allGuesses = new ArrayList<>();
     }
 
 
-    // create face up and down boards in play initiation
+    //create face up and down boards in play initiation
     public ArrayList<List<String>> createBoard(String type)
     {
-        ArrayList<List<String>> board = new ArrayList<List<String>>(height);
-        List<String> selectedSymbolPairs = new ArrayList<String>();
+        ArrayList<List<String>> board = new ArrayList<>(height);
+        List<String> selectedSymbolPairs = new ArrayList<>();
 
         if(isReplay)
         {
-            String[] replayBoard = Utils.getReplayInfo(1).replaceAll("[\\[]", "").replaceAll("[]]", "").replaceAll(" ", "").split(",");
-            for(String symbol : replayBoard){
-                selectedSymbolPairs.add(symbol);
-            }
+            String[] replayBoard = Utils.getReplayInfo("lastgame.txt", 1).replaceAll("\\[", "").replaceAll("]", "").replaceAll(" ", "").split(",");
+            Collections.addAll(selectedSymbolPairs, replayBoard);
         }
         else
         {
@@ -44,7 +42,7 @@ public class Board {
 
             //add random symbol pairs to list
             while(selectedSymbolPairs.size() < (height*width)){
-                int randomNumber = (int) (Math.random()*(allSymbols.size()-0)) + 0;
+                int randomNumber = (int) (Math.random() * allSymbols.size());
                 if(!selectedSymbolPairs.contains(allSymbols.get(randomNumber))) {
                     selectedSymbolPairs.add(allSymbols.get(randomNumber));
                     selectedSymbolPairs.add(allSymbols.get(randomNumber));
@@ -53,27 +51,27 @@ public class Board {
             //shuffle pairs
             Collections.shuffle(selectedSymbolPairs);
         }
-            //counter to get symbols from shuffled list
-            int cont = 0;
+        //counter to get symbols from shuffled list
+        int cont = 0;
 
-            //add elements to board
-            for(int i=0; i<height; i++)
+        //add elements to board
+        for(int i=0; i < height; i++)
+        {
+            List<String> rows = new ArrayList<>();
+
+            for(int j=0; j < width; j++)
             {
-                List<String> rows = new ArrayList<String>();
-
-                for(int j=0; j<width; j++)
-                {
-                    //add all X for down facing board
-                    if(type == "down"){
-                        rows.add("X");
-                    }else { //add symbols
-                        rows.add(selectedSymbolPairs.get(cont));
-                    }
-                    cont++;
+                //add all X for down facing board
+                if(Objects.equals(type, "down")){
+                    rows.add("X");
+                }else {
+                    //add symbols for face up board
+                    rows.add(selectedSymbolPairs.get(cont));
                 }
-                board.add(rows);
+                cont++;
             }
-
+            board.add(rows);
+        }
         return board;
     }
 
@@ -82,8 +80,8 @@ public class Board {
     public boolean win(){
         for (int i = 0; i < height; i++){
             for (int j = 0; j < width; j++){
-                // if any card is down the game continues
-                if(displayBoard.get(i).get(j) == "X"){
+                //if any card is down the game continues
+                if(Objects.equals(displayBoard.get(i).get(j), "X")){
                     return false;
                 }
             }
@@ -92,7 +90,7 @@ public class Board {
     }
 
 
-    // game playing loop
+    //game playing loop
     public void play() throws Exception
     {
         int guessLine = 2;
@@ -103,26 +101,35 @@ public class Board {
             //print board configuration so far
             System.out.println("Board configuration:");
             printBoard(displayBoard);
-            String guesses = "";
+            String guess;
 
             //get guesses and parse them
             if(isReplay)
             {
-                guesses = Utils.getReplayInfo(guessLine);
+                guess = Utils.getReplayInfo("lastgame.txt", guessLine);
                 System.out.println("Guessed pair:");
-                System.out.println(guesses);
+                System.out.println(guess);
                 guessLine++;
             }else{
-                guesses = Utils.getPlayerInput("Enter pair to reveal (row,column) (row,column) (e.g. (1,2) (2,2)):", "Guess");
+                guess = Utils.getPlayerInput("Enter pair to reveal (row,column) (row,column) (e.g. (1,2) (2,2)):", "Guess");
             }
-            int[] locations = Utils.parseGuesses(guesses);
+            int[] locations = Utils.parseGuess(guess);
 
             //save guesses for replay file
-            allGuesses.add(guesses);
+            allGuesses.add(guess);
 
             //if the guessed locations are within the board size check if corresponding cards match
             if(checkBounds(locations)){
-                checkAnswer(locations);
+                String result;
+                if(checkAnswer(locations)){
+                    result = "MATCH\n";
+                }else{
+                    result = "FAIL\n";
+                }
+                if(!isReplay){
+                    Utils.clearConsole();
+                }
+                System.out.print(result);
             }
         }
         endGame();
@@ -141,9 +148,8 @@ public class Board {
     }
 
 
-    // check if a valid user input matches
-    public void checkAnswer(int[] guesses) throws InterruptedException, IOException
-    {
+    //check if a valid user input matches
+    public boolean checkAnswer(int[] guesses) {
         attempts++;
         String symbol1 = "";
         String symbol2 = "";
@@ -158,7 +164,7 @@ public class Board {
                     //symbol in second location
                     symbol2 = board.get(i).get(j);
                 }
-                if(symbol1 != "" && symbol2 != ""){
+                if(!Objects.equals(symbol1, "") && !Objects.equals(symbol2, "")){
                     break;
                 }
             }
@@ -166,9 +172,9 @@ public class Board {
 
         //if symbols match update the face down board
         if(symbol1.equals(symbol2)){
-            ArrayList<List<String>> newBoard = new ArrayList<List<String>>(height);
+            ArrayList<List<String>> newBoard = new ArrayList<>(height);
             for (int i = 0; i < height; i++){
-                List<String> row = new ArrayList<String>();
+                List<String> row = new ArrayList<>();
                 for (int j = 0; j < width; j++) {
                     if ((guesses[0]-1 == i && guesses[1]-1 == j) || (guesses[2]-1 == i && guesses[3]-1 == j)) {
                         row.add(board.get(i).get(j));
@@ -179,16 +185,10 @@ public class Board {
                 newBoard.add(row);
             }
             displayBoard = newBoard;
-            if(!isReplay){
-                Utils.clearConsole();
-            }
-            System.out.print("MATCH\n");
+            return true;
         }else{
             //if symbols do not match continue the game
-            if(!isReplay){
-                Utils.clearConsole();
-            }
-            System.out.print("FAIL\n");
+            return false;
         }
     }
 
@@ -214,7 +214,7 @@ public class Board {
             info += guesses + "\n";
         }
 
-        Utils.writeToFile("lastgame.txt", info);
+        Utils.writeFile("lastgame.txt", info);
     }
 
 
@@ -228,20 +228,18 @@ public class Board {
         //update board
         if(leaderboard.size() > 0){
             for (String line : leaderboard){
-                    if(line != "" && line.contains(",")){
-                        String[] parts = line.split(",");
+                if(!Objects.equals(line, "") && line.contains(",")){
+                    String[] parts = line.split(",");
 
-                        //sort leaderboard
-                        if(attempts <= Integer.parseInt(parts[0])){
-                            if(!added){
-                                newLeaderboard += attempts + "," + height + "x" + width + "\n";
-                                added = true;
-                            }
-                            newLeaderboard += line + "\n";
-                        }else{
-                            newLeaderboard += line + "\n";
+                    //sort leaderboard
+                    if(attempts <= Integer.parseInt(parts[0])){
+                        if(!added){
+                            newLeaderboard += attempts + "," + height + "x" + width + "\n";
+                            added = true;
                         }
                     }
+                    newLeaderboard += line + "\n";
+                }
             }
         }
         if(!added){
@@ -249,7 +247,7 @@ public class Board {
         }
 
         //overwrite new leaderboard on file
-        Utils.writeToFile("leaderboard.txt", newLeaderboard);
+        Utils.writeFile("leaderboard.txt", newLeaderboard);
     }
 
 
@@ -262,7 +260,7 @@ public class Board {
         System.out.print("Top 5 High Scores:\n");
         for (String line : leaderboard){
             if(cont <= 5){
-                if(line != "" && line.contains(",")) {
+                if(!Objects.equals(line, "") && line.contains(",")) {
                     String[] parts = line.split(",");
                     System.out.print(cont + ". " + parts[0] + " flips on " + parts[1] + " board\n");
                     cont++;
