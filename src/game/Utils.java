@@ -1,15 +1,10 @@
 package game;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.sql.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
@@ -17,7 +12,7 @@ import java.util.stream.Stream;
 
 public class Utils {
 
-    // Creates a file given a file name and location
+    // create a file given a file name and location
     public static void createFile(String fileName, String fileLocation)
     {
         String fp = fileLocation + "/" + fileName;
@@ -35,17 +30,24 @@ public class Utils {
     }
 
 
-    // Writes to a given file based in a given location
-    public static void writeToFile(String fileName, String fileLocation, String text) throws IOException
+    // write or overwrite to a given file based in a given location
+    public static void writeToFile(String fileName, String fileLocation, String text, String type) throws IOException
     {
-        String fp = fileLocation + "/" + fileName;
-        FileOutputStream fos = new FileOutputStream(fp, true);
-        fos.write((text + "\r\n").getBytes());
-        fos.close();     
+        if(type == "overwrite"){
+            FileWriter fileWriter = new FileWriter(fileLocation + "/" + fileName);
+            fileWriter.write(text);
+            fileWriter.close();
+        }else{
+            String fp = fileLocation + "/" + fileName;
+            FileOutputStream fos = new FileOutputStream(fp, true);
+            fos.write((text + "\r\n").getBytes());
+            fos.write((text + "\r\n").getBytes());
+            fos.close();
+        }
     }
 
 
-    // Deletes a specific file in a specific location
+    // delete a specific file in a specific location
     public static void removeFile(String fileName, String fileLocation)
     {
         String fp = fileLocation + "/" + fileName;
@@ -58,8 +60,7 @@ public class Utils {
     }
 
 
-    // Reads a given file in a given location.
-    // Returns each line in the file as list of strings.
+    // read a given file in a given location and return each line in the file as list of strings
     public static List<String> readFile(String fileName, String fileLocation)
     {
         List<String> info = new ArrayList<String>(); 
@@ -82,168 +83,142 @@ public class Utils {
     }
 
 
-    // Takes a guess inputted by a user and parses it into an int[] so it can be compared
-    public static int[] parsePlayersInputs(String guess, String delim) throws Exception
+    // pPrints to terminal a given message and read in the user's input
+    public static String getPlayerInput(String text, String type)
     {
-        // Confirm the correct delimitor was used 
-        if(!guess.contains(delim)){
-            throw new Exception("Incorrect delimitor used.");
-        }
-
-        String[] g = guess.split(delim);
-        int[] arr = Stream.of(g).mapToInt(Integer::parseInt).toArray();
-
-        return arr;
-    }
-
-
-    // Prints to terminal a given message and reads in the users input
-    public static String getPlayersGuess(String displayText)
-    {
-        Scanner myObj = new Scanner(System.in);  // Create a Scanner object
-        System.out.println(displayText);         
-        return myObj.nextLine();  
-    }
-
-
-    // Prints to terminal a given message and reads in the users input
-    public static String getUserInput(String displayText, String typ)
-    {
-        boolean cm = false;
-        String g = "";
-        while(!cm)
+        boolean rightFormat = false;
+        String input = "";
+        while(!rightFormat)
         {
-            Scanner myObj = new Scanner(System.in);  // Create a Scanner object
-            System.out.println(displayText);
-            g = myObj.nextLine();  // Read user input
-            if(typ.equals("Guess"))
-                cm = verifyGuessFormat(g);
+            //print text passed as parameter
+            System.out.println(text);
 
-            if(typ.equals("Dim"))
-                cm = verifyDimFormat(g);
+            //read user input with a scanner object
+            Scanner myObj = new Scanner(System.in);
+            input = myObj.nextLine();  // Read user input
+
+            //verify user input depending on input type
+            if(type.equals("Guess"))
+                rightFormat = verifyGuessFormat(input);
+
+            if(type.equals("Dimensions"))
+                rightFormat = verifyDimensionsFormat(input);
                 
-            if(typ.equals("Replay"))
+            if(type.equals("Replay"))
             {
-                String rc = "Yes|yes|No|no|Y|y";
-                if(g.matches(rc))
-                {
-                    cm = true;
-                }
-                else
-                {
-                    System.out.println("Invalid entry must be either Yes or No");
-                }
+                rightFormat = verifyReplayFormat(input);
             }    
         }
-        return g;  
+        return input;
     }
 
 
-    // Verifies that the format a user inputs a guess is a valid format
-    // Valid format is 0,1:0,1
-    public static boolean verifyGuessFormat(String g)
+    //verify the format of a user's guess
+    public static boolean verifyGuessFormat(String guess)
     {
-        if(!g.contains(":") && g.contains(","))
-        {
+        //check that guessed location pair format is correct, valid format: (row,column) (row,column)
+        if (!guess.matches("[(][0-9]+,[0-9][)] [(][0-9]+,[0-9][)]")) {
+            System.out.println("Invalid format provided for guess. Must be (row,column) (row,column).");
             return false;
         }
         
         try {
-            for (String s : g.split(":")) {
-                s.split(",");
-            }
+            //check that locations can be parsed to integer
+            String[] pairs = guess.replaceAll("[(]", "").replaceAll("[)]", "").split(" ");
+            String locations1 = pairs[0];
+            String locations2 = pairs[1];
+
+            String[] location1parts = locations1.split(",");
+            Integer.parseInt(location1parts[0]);
+            Integer.parseInt(location1parts[1]);
+
+            String[] location2parts = locations2.split(",");
+            Integer.parseInt(location2parts[0]);
+            Integer.parseInt(location2parts[1]);
             return true;
             
         } catch (Exception e) {
-            System.out.println("Invalid format provided for guess " + g);
+            System.out.println("Invalid format provided for guess. Must be (row,column) (row,column).");
             return false;
         }
     }
 
 
-    // Verifies that the format of the user input for a guess is in a valid format
-    // Format should be either digit,digit:digit,digit
-    public static boolean verifyDimFormat(String input)
-    {
-        boolean chk = input.matches("[0-9]+,[0-9]+");
-        if(chk == false)
+    //verify the format of board dimensions
+    public static boolean verifyDimensionsFormat(String input) {
+        //check the format of provided board dimensions
+        if (!input.matches("[0-9]+x[0-9]+")){
             System.out.println("Invalid format provided for width and height.");
-        return chk;
+            return false;
+        }
+        try{
+            String[] dimensions = input.split("x");
+            int height = Integer.parseInt(dimensions[0]);
+            int width = Integer.parseInt(dimensions[1]);
+            //check that dimensions result in even number of tiles as per game requirements
+            if(width * height % 2 != 0){
+                System.out.println("Board dimensions must result in an even number of tiles.");
+                return false;
+            }else if(width * height > 60){ //check that board is not larger than 60 tiles as there are only 30 symbols available
+                System.out.println("Board must result in a maximum of 60 tiles.");
+                return false;
+            }
+            return true;
+        } catch (Exception e) {
+            System.out.println("Invalid board size.");
+            return false;
+        }
     }
 
 
-    // Clears console to a point where the previous guesses cant be seen without scrolling
+    //verify the format of response to whether user wants to replay last game or not
+    public static boolean verifyReplayFormat(String input){
+        String response = "Yes|yes|No|no|Y|y";
+        try{
+            if(input.matches(response)) {
+                return true;
+            } else {
+                System.out.println("Invalid entry must be either Yes or No.");
+                return false;
+            }
+        } catch (Exception e) {
+            System.out.println("Invalid entry must be either Yes or No.");
+            return false;
+        }
+    }
+
+
+    //parse dimensions provided by user
+    public static int[] parseDimensions(String input) throws Exception
+    {
+        //turn input string to an array of integers
+        String[] inputArray = input.split("x");
+        try{
+            int[] parsedInput = Stream.of(inputArray).mapToInt(Integer::parseInt).toArray();
+            return parsedInput;
+        } catch (Exception e) {
+            System.out.println("Error parsing dimensions.");
+            int[] emptyDimensions= new int[0];
+            return emptyDimensions;
+        }
+    }
+
+
+    //parse location pairs guessed by user
+    public static int[] parseGuesses(String input){
+        //turn input string to an array of integers
+        String[] pairs = input.replaceAll("[(]", "").replaceAll("[)]", "").replace(" ", ",").split(",");
+        int[] parsedGuesses = Arrays.stream(pairs).mapToInt(Integer::parseInt).toArray();
+        return parsedGuesses;
+    }
+
+
+    // clear console to a point where the previous guesses cant be seen without scrolling
     public static void clearConsole()
     {
         for(int clear = 0; clear < 200; clear++)
         {
             System.out.println("\b");
-        }
-    }
-
-
-    //Verifies if a given string matches a given regex string
-    public static boolean isInputValid(String input)
-    {
-        String c = "[0-9]+,[0-9]+:[0-9]+,[0-9]+";
-        return input.matches(c);
-    }
-
-
-    // Checks if a given input has the same values when split
-    public static boolean chkSameVals(String input, String delim)
-    {
-        String[] i = input.split(delim);
-        return i[0].matches(i[1]);
-    }
-
-
-    // Checks if the input exceeds the boundies of a given board
-    public static boolean chkBounds(String input, int width, int height) throws Exception
-    {
-        List<Boolean> chk = new ArrayList<>();
-        String[] v = input.split(":");
-        for (String s : v) {
-            int[] pv = parsePlayersInputs(s, ",");
-            if(pv[0] >= width || pv[1] >= height)
-            {
-                chk.add(false);
-            }
-            else
-            {
-                chk.add(true);
-            }
-        }
-        return chk.contains(false);
-    }
-
-
-    // Sorts leaderboard is asending order. lowest score is top of the file.
-    public static void sortLeaderboard() throws IOException
-    {
-        List<String> s = Utils.readFile("leaderboard.txt", "Results");
-        List<Integer> val = new ArrayList<>();
-        List<String> nl = new ArrayList<>();
-
-        for (String str : s) {
-            String[] v = str.split(" ");
-            val.add(Integer.valueOf(v[0]));
-        }
-        Collections.sort(val);
-
-        for (int v :val) {
-            for (String str : s) {
-                if(str.contains(String.valueOf(v)))
-                {
-                    nl.add(str);
-                    break;
-                }
-            }
-        }
-        removeFile("leaderboard.txt", "Results");
-        createFile("leaderboard.txt", "Results");
-        for (String str : nl) {
-            writeToFile("leaderboard.txt", "Results", str);
         }
     }
 
@@ -302,4 +277,5 @@ public class Utils {
         }
         return st;
     }
+
 }

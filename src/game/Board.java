@@ -1,196 +1,274 @@
 package game;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class Board {
     public int width;
     public int height;
-    public boolean isDisplayBoard;
     public boolean isReplay;
+    private static ArrayList<List<String>> board; //face up board configuration
+    private ArrayList<List<String>> displayBoard; //face down board configuration to keep track of matched guesses
     public int attempts;
-    private static ArrayList<List<String>> board;
+
+    private ArrayList<List<String>> allGuesses;
     List<String> userInput = new ArrayList<String>();
     
 
-    public Board(int width, int height, boolean isDisplayBoard, boolean isReplay) throws IOException {
+    public Board(int width, int height, boolean isReplay) throws IOException {
         this.width = width;
         this.height = height;
-        this.isDisplayBoard = isDisplayBoard;
         this.isReplay = isReplay;
-        board = new ArrayList<List<String>>(height);
-        if(!isDisplayBoard)
-        {
-            userInput.add("width:" + width);
-            userInput.add("height:" + height);
-        }
+        this.board = createBoard("up");
+        this.displayBoard = createBoard("down");
         if(!isReplay)
         {
-            Utils.removeFile("latestAttempt.txt", "Tracking");
-            Utils.createFile("latestAttempt.txt", "Tracking");
-            Utils.createFile("leaderboard.txt", "Results");
+           // Utils.removeFile("latestAttempt.txt", "Tracking");
+            //Utils.createFile("latestAttempt.txt", "Tracking");
+            //Utils.createFile("leaderboard.txt", "Results");
         }
     }
 
 
-    // Creates board based on height and width set by the constructor
-    public void createBoard()
+    // create face up and down boards in play initiation
+    public ArrayList<List<String>> createBoard(String type)
     {
+        ArrayList<List<String>> board = new ArrayList<List<String>>(height);
+
         if(isReplay)
         {
             board = Utils.getReplayBoard();
         }
         else
         {
-            List<String> c = Arrays.asList("!", "*", "$", "+", "-");
+            //list of available symbols and list of symbols that will be selected based on board size
+            List<String> allSymbols = Arrays.asList("!", "*", "$", "+", "-", "·", "%", "&", "/", "(", ")", "=", "¡", "?", "¿", "<", ">", "^", "{", "[", "]", "}", "¨", ";", ":", ".", "@", "_", "#", "€");
+            List<String> selectedSymbolPairs = new ArrayList<String>();
 
-            for(int i=0;i<height;i++)
-            {
-                List<String> tmp = new ArrayList<String>();
-                for(int j=0;j<width;j++)
-                {
-                    if(isDisplayBoard)
-                    {
-                        tmp.add("X");
-                    }
-                    else
-                    {
-                        int randomNumber = (int) (Math.random()*(c.size()-0)) + 0;
-                        tmp.add(c.get(randomNumber));
-                        // TODO Check to ensure there is atleast 1 unique pair if not update
-                    }             
+            //add random symbol pairs to list
+            while(selectedSymbolPairs.size() < (height*width)){
+                int randomNumber = (int) (Math.random()*(allSymbols.size()-0)) + 0;
+                if(!selectedSymbolPairs.contains(allSymbols.get(randomNumber))) {
+                    selectedSymbolPairs.add(allSymbols.get(randomNumber));
+                    selectedSymbolPairs.add(allSymbols.get(randomNumber));
                 }
-    
-                if(!isDisplayBoard)
-                    userInput.add("boardCreationRow"+ i + ":" + tmp);
-    
-                board.add(tmp);
             }
-        }
+            //shuffle pairs
+            Collections.shuffle(selectedSymbolPairs);
 
-    }
+            //counter to get symbols from shuffled list
+            int cont = 0;
 
-
-    // Prints to terminal the board containing all of the symbols.
-    // Only do this for debugging purposes
-    public void printBoard()
-    {
-        for (List<String> list : board) {
-            System.out.println(list);
-         }   
-    }
-
-
-    // Prints a board with only the selections the user has selected.
-    public void printDisplayBoard(int[] p , int[] p1)
-    {
-        ArrayList<List<String>> h = new ArrayList<List<String>>(height);
-        for(int i=0;i<height;i++)
-        {
-            List<String> tmp = new ArrayList<String>();
-            for(int j=0;j<width;j++)
+            //add elements to board
+            for(int i=0; i<height; i++)
             {
-                if (Arrays.equals(new int[]{i,j}, p)) {
-                    String s = (board.get(p[0])).get(p[1]);
-                    tmp.add(s); 
-                  } else if (Arrays.equals(new int[]{i,j}, p1)) {
-                    String s = (board.get(p1[0])).get(p1[1]);
-                    tmp.add(s); 
-                  } else {
-                    tmp.add("X");
-                  }          
-            }
-            h.add(tmp);
-        }
+                List<String> rows = new ArrayList<String>();
 
-        for (List<String> list : h) {
-            System.out.println(list);
-         } 
+                for(int j=0; j<width; j++)
+                {
+                    //add all X for down facing board
+                    if(type == "down"){
+                        rows.add("X");
+                    }else { //add symbols
+                        rows.add(selectedSymbolPairs.get(cont));
+                    }
+                    cont++;
+                }
+                board.add(rows);
+            }
+        }
+        return board;
     }
 
 
-    // Checks if a valid user input matches 
-    public boolean checkAnswer(int[] g, int[] g1) throws InterruptedException, IOException
-    {
-        attempts+=1;
-        System.out.println("Checking if your selection is correct or incorrect!");
-        printDisplayBoard(g, g1);
-        String c = board.get(g[0]).get(g[1]);
-        String c1 = board.get(g1[0]).get(g1[1]);
-        Boolean chk = c.equals(c1);
-        Thread.sleep(2000);
-        Utils.clearConsole();
-        System.out.println("Guess successful: " + chk + ". Characters at the indexes you selected " + c + " and " + c1  + " . Attempts=" + attempts);
-        if(chk && !isReplay)
-        {
-            for (String x : userInput) {
-                Utils.writeToFile("latestAttempt.txt", "Tracking", x);
+    //check if all cards are up
+    public boolean win(){
+        for (int i = 0; i < height; i++){
+            for (int j = 0; j < width; j++){
+                // if any card is down the game continues
+                if(displayBoard.get(i).get(j) == "X"){
+                    return false;
+                }
             }
-            String lb = String.format("%d flips on a %d X %d board",attempts,width,height);
-            Utils.writeToFile("leaderboard.txt", "Results", lb);
-            Utils.sortLeaderboard();
         }
-        return chk;
+        return true;
     }
 
 
-    // Method called to play the game. 
-    // Will continually ask for user input until a matching pair is selected.
+    // game playing loop
     public void play() throws Exception
     {
         boolean cm = false;
         List<String> p = new ArrayList<>();
         int rc = 0;
-        if(isReplay)
-        {
+        if(isReplay) {
             p = Utils.getPlayerGuesses();
         }
-            
+        printBoard(board);
 
         while(!cm)
         {
-            String g = "";
-            if(isReplay)
-            {
-                g = p.get(rc);
-                rc++;
-            }
-            else
-            {
-                g = Utils.getPlayersGuess("Please enter your 2 guesses. Guesses start with 0 rather than 1. In the format 0,1:0,2");
-                userInput.add("guess-" + g);             
-            }
-
-            // Confirm expected format is correct
-            if(!Utils.isInputValid(g))
-            {
-                attempts+=1;
-                System.out.println("Invalid input please try again.");
-                
-            }
-            else if(Utils.chkBounds(g, width -1, height -1))
-            {
-                attempts+=1;
-                System.out.println("Input exceeds the boundires of the board.");
-            }
-            else if(Utils.chkSameVals(g,":"))
-            {
-                attempts+=1;
-                System.out.println("Cant make the same selection");
-            }
-            else
-            {
-                String[] g1 = g.split(":");
-                List<int[]> tmp = new ArrayList<int[]>();
-                for (String s : g1) {
-                    int[] a = Utils.parsePlayersInputs(s, ",");
-                    tmp.add(a);
+            //continue as long as game has not been won
+            if(!win()) {
+                String g = "";
+                if(isReplay)
+                {
+                    g = p.get(rc);
+                    rc++;
                 }
-                cm = checkAnswer(tmp.get(0), tmp.get(1));
+
+                //print board configuration so far
+                System.out.println("Board configuration:");
+                printBoard(displayBoard);
+
+                //get guesses and parse
+                String guesses = Utils.getPlayerInput("Enter pair to reveal (row,column) (row,column) (e.g. (1,2) (2,2)):", "Guess");
+                int[] locations = Utils.parseGuesses(guesses);
+
+                //if the guessed locations are within the board size check if corresponding cards match
+                if(checkBounds(locations)){
+                    checkAnswer(locations);
+                }
+            }else{
+                //if the game has ended print the final board configuration
+                System.out.println("Board configuration:");
+                printBoard(displayBoard);
+                System.out.println("YOU WIN");
+
+                //update and print the 5 high scores board
+                updateLeaderboard();
+                printLeaderboard();
+
+                //end game
+                System.exit(0);
             }
-            System.out.println(String.format("You have made %d attempts to solve this game.",attempts));
+        }
+    }
+
+
+    // Checks if the input exceeds the boundies of a given board
+    public boolean checkBounds(int[] locations)
+    {
+        if(locations[1] > width || locations[0] > height || locations[3] > width || locations[2] > height)
+        {
+            System.out.println("The locations provided are outside the bounds of the board.");
+            return false;
+        }
+        return true;
+    }
+
+
+    // check if a valid user input matches
+    public void checkAnswer(int[] guesses) throws InterruptedException, IOException
+    {
+        attempts++;
+        String symbol1 = "";
+        String symbol2 = "";
+
+        //get symbols in locations
+        for (int i = 0; i < height; i++){
+            for (int j = 0; j < width; j++){
+                if(guesses[0]-1 == i && guesses[1]-1 == j){
+                    //symbol in first location
+                    symbol1 = board.get(i).get(j);
+                }else if(guesses[2]-1 == i && guesses[3]-1 == j){
+                    //symbol in second location
+                    symbol2 = board.get(i).get(j);
+                }
+                if(symbol1 != "" && symbol2 != ""){
+                    break;
+                }
+            }
+        }
+
+        //if symbols match update the face down board
+        if(symbol1 == symbol2){
+            ArrayList<List<String>> newBoard = new ArrayList<List<String>>(height);
+            for (int i = 0; i < height; i++){
+                List<String> row = new ArrayList<String>();
+                for (int j = 0; j < width; j++) {
+                    if ((guesses[0]-1 == i && guesses[1]-1 == j) || (guesses[2]-1 == i && guesses[3]-1 == j)) {
+                        row.add(board.get(i).get(j));
+                    } else {
+                        row.add(displayBoard.get(i).get(j));
+                    }
+                }
+                newBoard.add(row);
+            }
+            displayBoard = newBoard;
+            Utils.clearConsole();
+            System.out.print("MATCH\n");
+        }else{
+            //if symbols do not match continue the game
+            Utils.clearConsole();
+            System.out.print("FAIL\n");
+        }
+    }
+
+
+    //print the board passed as a parameter
+    public void printBoard(ArrayList<List<String>> board)
+    {
+        for (int i = 0; i < height; i++){
+            for (int j = 0; j < width; j++){
+                System.out.print(board.get(i).get(j));
+            }
+            System.out.print('\n');
+        }
+    }
+
+
+    //update the leaderboard file with this play's results
+    public void updateLeaderboard() throws IOException {
+        //read leaderboard file
+        List<String> leaderboard = Utils.readFile("leaderboard.txt", "results");
+        String newLeaderboard = "";
+        boolean added = false;
+
+        //update board
+        if(leaderboard.size() > 0){
+            for (String line : leaderboard){
+                    if(line != "" && line.contains(",")){
+                        String[] parts = line.split(",");
+
+                        //sort leaderboard
+                        if(attempts <= Integer.parseInt(parts[0])){
+                            if(!added){
+                                newLeaderboard += attempts + "," + height + "x" + width + "\n";
+                                added = true;
+                            }
+                            newLeaderboard += line + "\n";
+                        }else{
+                            newLeaderboard += line + "\n";
+                        }
+                    }
+            }
+        }
+        if(!added){
+            newLeaderboard += attempts + "," + height + "x" + width + "\n";
+        }
+
+        //overwrite new leaderboard on file
+        Utils.writeToFile("leaderboard.txt", "results", newLeaderboard, "overwrite");
+    }
+
+
+    //print lines in leaderboard file
+    public void printLeaderboard(){
+        List<String> leaderboard = Utils.readFile("leaderboard.txt", "results");
+        String newLeaderboard = "";
+        int cont = 1;
+
+        //print only first 5 lines
+        System.out.print("Top 5 High Scores:\n");
+        for (String line : leaderboard){
+            if(cont <= 5){
+                if(line != "" && line.contains(",")) {
+                    String[] parts = line.split(",");
+                    System.out.print(cont + ". " + parts[0] + " flips on " + parts[1] + " board\n");
+                    cont++;
+                }
+            }
         }
     }
 }
