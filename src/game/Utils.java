@@ -137,11 +137,11 @@ public class Utils {
             if (input.matches(response)) {
                 return true;
             } else {
-                System.out.println("Invalid entry must be either Yes or No.");
+                System.out.println("Invalid entry. Must be either Yes or No.");
                 return false;
             }
         } catch (Exception e) {
-            System.out.println("Invalid entry must be either Yes or No.");
+            System.out.println("Invalid entry. Must be either Yes or No.");
             return false;
         }
     }
@@ -162,9 +162,14 @@ public class Utils {
 
     //parse location pairs guessed by user
     public static int[] parseGuess(String input) {
-        //turn input string to an array of integers
-        String[] pairs = input.replaceAll("[(]", "").replaceAll("[)]", "").replace(" ", ",").split(",");
-        return Arrays.stream(pairs).mapToInt(Integer::parseInt).toArray();
+        try {
+            //turn input string to an array of integers
+            String[] pairs = input.replaceAll("[(]", "").replaceAll("[)]", "").replace(" ", ",").split(",");
+            return Arrays.stream(pairs).mapToInt(Integer::parseInt).toArray();
+        } catch (Exception e) {
+            System.out.println("Error parsing guess.");
+            return new int[0];
+        }
     }
 
 
@@ -178,8 +183,13 @@ public class Utils {
 
     //get lines from replay file
     public static String getReplayInfo(String filename, int line) {
-        List<String> lastGame = Utils.readFile(filename);
-        return lastGame.get(line);
+        try{
+            List<String> lastGame = Utils.readFile(filename);
+            return lastGame.get(line);
+        }catch (Exception e) {
+            System.out.println("Error getting replay info.");
+            return "";
+        }
     }
 
 }

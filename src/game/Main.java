@@ -1,5 +1,7 @@
 package game;
 
+import java.util.Objects;
+
 public class Main {
     static Board board;
 
@@ -9,16 +11,16 @@ public class Main {
 
         //set up the game
         int[] dimensions = getBoardDimensions(isReplay);
-        board = new Board(dimensions[0], dimensions[1], isReplay);
-        board.play();
+        if(dimensions.length == 2){
+            board = new Board(dimensions[0], dimensions[1], isReplay);
+            board.play();
+        }
     }
 
 
     //determine if the player wants to replay the most recent game
-    public static boolean isReplay()
-    {
-        String input = Utils.getPlayerInput("Replay last game? Y/N",
-             "Replay");
+    public static boolean isReplay() {
+        String input = Utils.getPlayerInput("Replay last game? Y/N", "Replay");
         return input.matches("Yes|yes|Y|y");
     }
 
@@ -28,7 +30,11 @@ public class Main {
         int[] dimensions;
         if(isReplay){
             String dimensionsString = Utils.getReplayInfo("lastgame.txt", 0);
-            dimensions = Utils.parseDimensions(dimensionsString);
+            if(!Objects.equals(dimensionsString, "")){
+                dimensions = Utils.parseDimensions(dimensionsString);
+            }else{
+                return new int[0];
+            }
         }else{
             String input = Utils.getPlayerInput("Enter board dimensions for even number of cards. Sample entry: 4x4", "Dimensions");
             dimensions = Utils.parseDimensions(input);

@@ -38,7 +38,7 @@ public class Board {
         else
         {
             //list of available symbols and list of symbols that will be selected based on board size
-            List<String> allSymbols = Arrays.asList("!", "*", "$", "+", "-", "·", "%", "&", "/", "(", ")", "=", "~", "`", "¡", "?", "¿", "<", ">", "^", "{", "}", "¨", ";", ":", ".", "@", "_", "#", "€");
+            List<String> allSymbols = Arrays.asList("!", "*", "$", "+", "-", "·", "%", "&", "/", "(", ")", "=", "~", "|", "¡", "?", "¿", "<", ">", "^", "{", "}", "¨", ";", ":", ".", "@", "_", "#", "€");
 
             //add random symbol pairs to list
             while(selectedSymbolPairs.size() < (height*width)){
