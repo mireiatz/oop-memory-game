@@ -94,7 +94,7 @@ public class Board {
     public void play() throws Exception
     {
         int guessLine = 2;
-        printBoard(board);
+        //printBoard(board);
 
         //continue as long as game has not been won
         while(!win()) {
